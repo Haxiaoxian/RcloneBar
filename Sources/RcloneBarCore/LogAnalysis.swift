@@ -156,6 +156,8 @@ public struct LogAnalysis: Equatable, Sendable {
     public var lastPhase: PhaseMarker?
     public var sawSuccess = false
     public var sawResyncRequired = false
+    /// 找不到上一轮的 listing（历史缺失或参数变化导致文件名不同）
+    public var sawMissingListings = false
     public var sawRetryableAbort = false
     public var sawAbort = false
     public var sawGracefulOK = false
@@ -219,9 +221,8 @@ public enum LogAnalyzer {
             }
             if msg.contains("Graceful shutdown completed successfully") { a.sawGracefulOK = true }
             if msg.contains("Graceful shutdown failed") { a.sawGracefulFailed = true }
-            if msg.contains("Must run --resync to recover") || msg.contains("cannot find prior Path1 or Path2 listings") {
-                a.sawResyncRequired = true
-            }
+            if msg.contains("Must run --resync to recover") { a.sawResyncRequired = true }
+            if msg.contains("cannot find prior Path1 or Path2 listings") { a.sawMissingListings = true }
             if msg.contains("Error is retryable without --resync") { a.sawRetryableAbort = true }
             if msg.contains("Bisync aborted") { a.sawAbort = true; a.lastPhase = .finished }
             if msg.contains("Bisync critical error") { a.sawCritical = true }
@@ -239,7 +240,7 @@ public enum LogAnalyzer {
                 if networkNeedles.contains(where: { lower.contains($0) }) { flags.insert(.network) } else { flags.insert(.other) }
             }
         }
-        if a.sawResyncRequired { flags.insert(.resyncRequired) }
+        if a.sawResyncRequired || a.sawMissingListings { flags.insert(.resyncRequired) }
         if a.sawRetryableAbort { flags.insert(.retryableAbort) }
         // 优先级：授权 > 需要人工处理 > 删除保护 > 访问检查 > 锁 > 网络 > 可重试中止 > 其他
         let priority: [ErrorCategory] = [.auth, .resyncRequired, .safetyAbort, .accessCheck, .lockHeld, .network, .retryableAbort, .other]

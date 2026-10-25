@@ -52,7 +52,8 @@ class Env:
             os.makedirs(remote, exist_ok=True)
             open(os.path.join(local, "RCLONE_TEST"), "w").write("access check\n")
             open(os.path.join(local, f"说明 {name}.md"), "w").write("测试数据\n")
-            subprocess.run([self.rclone, "bisync", local, remote, "--workdir", self.wd, "--resync", "-q"], check=True)
+            # 后端参数（--local-no-clone）会影响 bisync 的 listing 文件名，初始化时必须使用同样的参数
+            subprocess.run([self.rclone, "bisync", local, remote, "--workdir", self.wd, "--resync", "-q", "--local-no-clone"], check=True)
         jobs = []
         for jid, (name, local, remote, port) in self.jobs.items():
             log = os.path.join(self.rb, "test-logs", f"{jid}.log")
@@ -61,7 +62,9 @@ class Env:
                              logFiles=[log], rcPort=port, launchMode="direct", bisyncWorkdir=self.wd, scriptHasRecover=True,
                              direct=dict(program=self.rclone,
                                          arguments=["bisync", local, remote, "--workdir", self.wd, "--resilient", "--recover",
-                                                    "--check-access", "--max-delete", "50", "--conflict-resolve", "none"],
+                                                    "--check-access", "--max-delete", "50", "--conflict-resolve", "none",
+                                                    # macOS APFS 上本地复制会走 clonefile（不受限速、瞬间完成），测试需要真实传输
+                                                    "--local-no-clone"],
                                          environment={}, logFile=log)))
         self.write_json("jobs.json", dict(version=1, jobs=jobs, createdAt="2026-10-25T00:00:00Z"))
         self.write_json("install.json", dict(installedAt="2026-10-25T00:00:00Z", backupDir="/tmp", legacy=[], agentVersion="test"))
@@ -307,7 +310,7 @@ def run_tests(e):
     print("\n[8] 外部启动的 bisync（无 RC）：不重复启动，界面退回日志信息")
     e.make_files("projects", 10, 8)
     local, remote = e.jobs["projects"][1], e.jobs["projects"][2]
-    ext = subprocess.Popen([e.rclone, "bisync", local, remote, "--workdir", e.wd, "--resilient", "--recover", "--bwlimit", "8M", "-v"],
+    ext = subprocess.Popen([e.rclone, "bisync", local, remote, "--workdir", e.wd, "--resilient", "--recover", "--bwlimit", "8M", "-v", "--local-no-clone"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     e.wait(lambda: e.runtime("projects").get("phase") == "running", 10)
     r = e.cli("sync", "projects")

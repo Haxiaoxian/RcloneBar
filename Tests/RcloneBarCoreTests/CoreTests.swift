@@ -232,6 +232,14 @@ final class EvaluatorTests: XCTestCase {
         XCTAssertTrue(v.summary.contains("不会自动执行 --resync"))
     }
 
+    func testMissingListingsNeedsAttentionEvenIfRetryable() {
+        let v = RunEvaluator.evaluate(ev(exit: 7, rclone: true, lines: [
+            "2026/10/25 01:27:04 ERROR : Bisync critical error: cannot find prior Path1 or Path2 listings, likely due to critical error on prior run ",
+            "2026/10/25 01:27:04 ERROR : Bisync aborted. Error is retryable without --resync due to --resilient mode.",
+        ], listingUpdated: false))
+        XCTAssertEqual(v.outcome, .needsAttention)
+    }
+
     func testStoppedByUser() {
         let v = RunEvaluator.evaluate(ev(exit: 130, rclone: true, lines: [], listingUpdated: false, stop: true))
         XCTAssertEqual(v.outcome, .stoppedByUser)
@@ -309,6 +317,7 @@ final class MiscTests: XCTestCase {
         XCTAssertEqual(BisyncListings.canonical("/Users/zhuke/Documents/主仓库"), "Users_zhuke_Documents_主仓库")
         XCTAssertEqual(BisyncListings.canonical("onedrive:其他/Obsidian/主仓库"), "onedrive_其他_Obsidian_主仓库")
         XCTAssertEqual(BisyncListings.canonical("/a b/c"), "a_b_c")
+        XCTAssertEqual(BisyncListings.stripConfigSuffix("a{Ab3_x}..b.path1.lst"), "a..b.path1.lst")
     }
 
     func testPlistOnDemandRemovesScheduleAndKeepsOthers() throws {

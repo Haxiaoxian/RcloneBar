@@ -78,7 +78,7 @@ local, remote = JOBS[job]
 base = {json.dumps(legacy)}
 log = os.path.join(base, "logs", job + ".log")
 cmd = [{json.dumps(RCLONE)}, "bisync", local, remote, "--workdir", {json.dumps(wd)}, "--resilient", "--recover",
-       "--check-access", "--max-delete", "50", "--log-file", log, "-v"]
+       "--check-access", "--max-delete", "50", "--log-file", log, "-v", "--local-no-clone"]
 started = datetime.datetime.now().astimezone().isoformat()
 r = subprocess.run(cmd)
 st = {{"state": "success" if r.returncode == 0 else "failed", "last_run": started, "exit_code": r.returncode}}
@@ -95,7 +95,7 @@ for jid, (name, local, remote, port) in jobs.items():
     os.makedirs(remote, exist_ok=True)
     open(os.path.join(local, "RCLONE_TEST"), "w").write("x")
     open(os.path.join(local, "说明.md"), "w").write("测试\n")
-    subprocess.run([RCLONE, "bisync", local, remote, "--workdir", wd, "--resync", "-q"], check=True)
+    subprocess.run([RCLONE, "bisync", local, remote, "--workdir", wd, "--resync", "-q", "--local-no-clone"], check=True)
     p = os.path.join(la, f"{labels[jid]}.plist")
     plistlib.dump({"Label": labels[jid], "ProgramArguments": [sys.executable, sync_py, jid], "StartInterval": 3600,
                    "RunAtLoad": False, "StandardOutPath": os.path.join(legacy, f"logs/{jid}.launchd.log"),

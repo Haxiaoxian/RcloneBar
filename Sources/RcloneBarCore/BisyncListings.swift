@@ -16,10 +16,21 @@ public enum BisyncListings {
         return out
     }
 
+    public static func stripConfigSuffix(_ name: String) -> String {
+        name.replacingOccurrences(of: #"\{[0-9A-Za-z_-]*\}"#, with: "", options: .regularExpression)
+    }
+
     public static func candidateBaseNames(job: JobConfig) -> [String] {
-        let a = canonical(BisyncMatcher.normalize(job.localPath))
-        let b = canonical(BisyncMatcher.normalize(job.remotePath))
-        return ["\(a)..\(b)", "\(b)..\(a)"]
+        // 本地路径在带后端参数运行时会变成 "local{哈希}:/path"，去掉哈希后 canonical 为 "local__path"
+        func variants(_ p: String) -> [String] {
+            let c = canonical(BisyncMatcher.normalize(p))
+            return p.hasPrefix("/") ? [c, "local__" + c] : [c]
+        }
+        var out: [String] = []
+        for a in variants(job.localPath) {
+            for b in variants(job.remotePath) { out += ["\(a)..\(b)", "\(b)..\(a)"] }
+        }
+        return out
     }
 
     /// 在若干候选目录中寻找该任务的 listing，返回 (工作目录, 基名)。
@@ -33,11 +44,13 @@ public enum BisyncListings {
             let (dir, depth) = queue.removeFirst()
             guard seen.insert(dir.path).inserted, let names = try? fm.contentsOfDirectory(atPath: dir.path) else { continue }
             for name in names {
-                let n = name.precomposedStringWithCanonicalMapping
+                // 带后端参数时 rclone 会在名字里加 {哈希} 后缀，比较时忽略它
+                let n = stripConfigSuffix(name.precomposedStringWithCanonicalMapping)
                 for base in bases where n == base + ".path1.lst" || n == base + ".path1.lst-old" {
                     let url = dir.appendingPathComponent(name)
                     let m = JSONStore.modificationDate(url) ?? .distantPast
-                    if best == nil || m > best!.2 { best = (dir, String(name.dropLast(n.hasSuffix("-old") ? 14 : 10)), m) }
+                    let suffix = name.hasSuffix("-old") ? ".path1.lst-old" : ".path1.lst"
+                    if best == nil || m > best!.2 { best = (dir, String(name.dropLast(suffix.count)), m) }
                 }
                 if depth < maxDepth {
                     var isDir: ObjCBool = false

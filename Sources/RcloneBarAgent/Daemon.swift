@@ -125,7 +125,7 @@ final class Daemon {
             let exec: JobExecutor = job.launchMode == .launchd ? LaunchdExecutor(job: job) : DirectExecutor(job: job)
             let w = JobWorker(job: job, executor: exec, saved: saved?.jobs[job.id])
             // 错开首次运行，避免登录后同时启动
-            let stagger = testIntervalSeconds.map { min($0, 15) } ?? 15
+            let stagger = testIntervalSeconds ?? 15
             let earliest = now.addingTimeInterval(stagger + Double(i) * stagger)
             if let n = w.rt.nextRunAt, n > earliest { } else { w.rt.nextRunAt = earliest }
             workers.append(w)

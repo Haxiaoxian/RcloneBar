@@ -73,6 +73,9 @@ public enum RunEvaluator {
         if cat == .auth {
             return RunVerdict(outcome: .authRequired, summary: "OneDrive 授权可能已失效，需要在终端运行 rclone config reconnect onedrive: 重新授权。", category: .auth, evidence: ev)
         }
+        if e.log.sawMissingListings {
+            return RunVerdict(outcome: .needsAttention, summary: "bisync 找不到上一轮的历史 listing（历史被移动/删除，或参数变化导致文件名不同）。程序不会自动执行 --resync，请先运行接入检查并查看日志。", category: .resyncRequired, evidence: ev)
+        }
         if e.log.sawResyncRequired && !e.log.sawRetryableAbort {
             return RunVerdict(outcome: .needsAttention, summary: "bisync 中止并要求人工处理（--resync）。程序不会自动执行 --resync，请先查看日志与备份。", category: .resyncRequired, evidence: ev)
         }
@@ -105,7 +108,7 @@ public enum RunEvaluator {
         if failedSignal {
             let retryable = cat == .network || cat == .retryableAbort || cat == .lockHeld || e.log.sawRetryableAbort
             if retryable {
-                let what = cat?.label ?? "可重试的错误"
+                let what = (cat == nil || cat == .resyncRequired) ? ErrorCategory.retryableAbort.label : cat!.label
                 return RunVerdict(outcome: .retryableFailure, summary: "\(what)。本轮未完成，将在下一次计划时间自动重试。", category: cat, evidence: ev)
             }
             if listingOK == true && exitOK == false && noAbort {
