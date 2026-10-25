@@ -134,7 +134,7 @@ case "sync", "stop":
 
 case "pause", "resume":
     validateTarget()
-    var s = JSONStore.read(Settings.self, from: paths.settingsFile) ?? Settings()
+    var s = JSONStore.read(SyncSettings.self, from: paths.settingsFile) ?? SyncSettings()
     let pause = command == "pause"
     if let t = target {
         s.pausedJobs.removeAll { $0 == t }

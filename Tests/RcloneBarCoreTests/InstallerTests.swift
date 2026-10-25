@@ -78,7 +78,7 @@ final class InstallerTests: XCTestCase {
         let perm = (try fm.attributesOfItem(atPath: paths.credentialFile.path)[.posixPermissions] as? NSNumber)?.intValue
         XCTAssertEqual(perm, 0o600)
 
-        let settings = try XCTUnwrap(JSONStore.read(Settings.self, from: paths.settingsFile))
+        let settings = try XCTUnwrap(JSONStore.read(SyncSettings.self, from: paths.settingsFile))
         XCTAssertEqual(settings.intervalMinutes, 5, "沿用原 300 秒间隔")
         let jobs = try XCTUnwrap(JSONStore.read(JobsFile.self, from: paths.jobsFile))
         XCTAssertEqual(jobs.jobs.first?.scriptHasRecover, true)

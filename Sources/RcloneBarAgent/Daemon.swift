@@ -74,7 +74,7 @@ final class JobWorker {
 final class Daemon {
     let paths: AppPaths
     let log: AgentLog
-    var settings: Settings
+    var settings: SyncSettings
     var settingsMTime: Date?
     var workers: [JobWorker] = []
     var credentials: RCCredentials?
@@ -95,7 +95,7 @@ final class Daemon {
     init(paths: AppPaths) {
         self.paths = paths
         self.log = AgentLog(url: paths.agentLogFile)
-        self.settings = JSONStore.read(Settings.self, from: paths.settingsFile) ?? Settings()
+        self.settings = JSONStore.read(SyncSettings.self, from: paths.settingsFile) ?? SyncSettings()
         self.settingsMTime = JSONStore.modificationDate(paths.settingsFile)
         self.tick = Double(ProcessInfo.processInfo.environment["RCLONEBAR_TICK"] ?? "") ?? 1.0
         self.testIntervalSeconds = Double(ProcessInfo.processInfo.environment["RCLONEBAR_TEST_INTERVAL_SECONDS"] ?? "")
@@ -190,7 +190,7 @@ final class Daemon {
         let m = JSONStore.modificationDate(paths.settingsFile)
         guard m != settingsMTime else { return }
         settingsMTime = m
-        guard let new = JSONStore.read(Settings.self, from: paths.settingsFile) else { return }
+        guard let new = JSONStore.read(SyncSettings.self, from: paths.settingsFile) else { return }
         let old = settings
         settings = new
         if old.intervalMinutes != new.intervalMinutes {

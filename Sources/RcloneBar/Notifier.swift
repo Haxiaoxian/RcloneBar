@@ -29,7 +29,7 @@ final class Notifier {
         }
     }
 
-    func process(snapshot: Snapshot, settings: Settings) {
+    func process(snapshot: Snapshot, settings: SyncSettings) {
         guard settings.notifyFailures || settings.notifyConflicts || settings.notifyAuth else { return }
         requestAuthorizationIfNeeded()
         let names = Dictionary(uniqueKeysWithValues: snapshot.jobs.map { ($0.id, $0.config.displayName) })
@@ -54,7 +54,7 @@ final class Notifier {
         }
     }
 
-    private func notify(run: RunRecord, name: String, consecutive: Int, settings: Settings) {
+    private func notify(run: RunRecord, name: String, consecutive: Int, settings: SyncSettings) {
         switch run.outcome {
         case .authRequired where settings.notifyAuth:
             post(title: "\(name)：需要重新授权 OneDrive", body: run.summary, id: run.id)

@@ -90,7 +90,7 @@ public struct Installer {
                                        wasLoaded: r?.launchdLoaded ?? false, wasDisabled: r?.disabled))
         }
 
-        var settings = JSONStore.read(Settings.self, from: paths.settingsFile) ?? Settings()
+        var settings = JSONStore.read(SyncSettings.self, from: paths.settingsFile) ?? SyncSettings()
         if !fm.fileExists(atPath: paths.settingsFile.path),
            let interval = report.jobs.compactMap(\.startInterval).min() {
             settings.intervalMinutes = max(1, Int((Double(interval) / 60).rounded()))

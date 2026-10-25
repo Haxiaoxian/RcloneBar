@@ -105,7 +105,7 @@ public struct JobsFile: Codable, Sendable {
 
 // MARK: - 设置（settings.json，由 App 写入，后台服务读取）
 
-public struct Settings: Codable, Equatable, Sendable {
+public struct SyncSettings: Codable, Equatable, Sendable {
     public static let intervalChoices = [1, 5, 10, 30, 60]
 
     public var intervalMinutes: Int = 5
@@ -135,7 +135,7 @@ public struct Settings: Codable, Equatable, Sendable {
     // 字段缺失时使用默认值，便于以后增加设置项而不破坏旧文件。
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        let d = Settings()
+        let d = SyncSettings()
         intervalMinutes = try c.decodeIfPresent(Int.self, forKey: .intervalMinutes) ?? d.intervalMinutes
         pausedAll = try c.decodeIfPresent(Bool.self, forKey: .pausedAll) ?? d.pausedAll
         pausedJobs = try c.decodeIfPresent([String].self, forKey: .pausedJobs) ?? d.pausedJobs

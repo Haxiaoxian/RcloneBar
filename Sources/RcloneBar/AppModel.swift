@@ -16,7 +16,7 @@ actor RefreshSignal {
 @MainActor
 final class AppModel: ObservableObject {
     @Published private(set) var snapshot: Snapshot?
-    @Published var settings: Settings
+    @Published var settings: SyncSettings
     @Published var toast: String?
     @Published var loginItemEnabled = false
     @Published var serviceOutput: String = ""
@@ -30,11 +30,12 @@ final class AppModel: ObservableObject {
     private var saveTask: Task<Void, Never>?
     private var toastTask: Task<Void, Never>?
     private var lastShownCommandID: String?
+    private var lastLocalSettingsChange = Date.distantPast
     let notifier = Notifier()
 
     init() {
         collector = StatusCollector(paths: paths)
-        settings = JSONStore.read(Settings.self, from: AppPaths().settingsFile) ?? Settings()
+        settings = JSONStore.read(SyncSettings.self, from: AppPaths().settingsFile) ?? SyncSettings()
         loginItemEnabled = SMAppService.mainApp.status == .enabled
         start()
     }
@@ -74,7 +75,7 @@ final class AppModel: ObservableObject {
             show(r.message)
         }
         // 其他地方（例如命令行）修改了设置时同步到界面
-        if saveTask == nil, snap.settings != settings, snap.mode == .managed {
+        if saveTask == nil, Date().timeIntervalSince(lastLocalSettingsChange) > 8, snap.settings != settings {
             settings = snap.settings
         }
         notifier.process(snapshot: snap, settings: settings)
@@ -91,11 +92,12 @@ final class AppModel: ObservableObject {
 
     // MARK: 设置（写入 settings.json，后台服务约 1 秒内读取）
 
-    func updateSettings(_ change: (inout Settings) -> Void) {
+    func updateSettings(_ change: (inout SyncSettings) -> Void) {
         var s = settings
         change(&s)
         guard s != settings else { return }
         settings = s
+        lastLocalSettingsChange = Date()
         saveTask?.cancel()
         saveTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 400_000_000)
@@ -108,6 +110,58 @@ final class AppModel: ObservableObject {
             self.saveTask = nil
             self.refreshSoon()
         }
+    }
+
+    /// 设置项的绑定：修改即写入 settings.json
+    func binding<T>(_ keyPath: WritableKeyPath<SyncSettings, T>) -> Binding<T> {
+        Binding(
+            get: { self.settings[keyPath: keyPath] },
+            set: { newValue in self.updateSettings { $0[keyPath: keyPath] = newValue } }
+        )
+    }
+
+    func pausedBinding(_ job: JobSnapshot) -> Binding<Bool> {
+        Binding(
+            get: { self.settings.isPaused(job.id) },
+            set: { v in if v != self.settings.isPaused(job.id) { self.togglePause(job) } }
+        )
+    }
+
+    var pausedAllBinding: Binding<Bool> {
+        Binding(get: { self.allPaused }, set: { v in if v != self.allPaused { self.togglePauseAll() } })
+    }
+
+    var loginItemBinding: Binding<Bool> {
+        Binding(get: { self.loginItemEnabled }, set: { v in self.setLoginItem(v) })
+    }
+
+    func webURLBinding(_ id: String) -> Binding<String> {
+        Binding(
+            get: { self.settings.webURLs[id] ?? "" },
+            set: { v in self.updateSettings { $0.webURLs[id] = v.isEmpty ? nil : v } }
+        )
+    }
+
+    /// 限速输入框以 MB/s 显示，内部保存 KiB/s
+    func limitBinding(_ keyPath: WritableKeyPath<SyncSettings, Int>) -> Binding<Double> {
+        Binding(
+            get: { Double(self.settings[keyPath: keyPath]) / 1024 },
+            set: { v in self.updateSettings { $0[keyPath: keyPath] = max(0, Int((v * 1024).rounded())) } }
+        )
+    }
+
+    var customTransfersBinding: Binding<Bool> {
+        Binding(
+            get: { self.settings.transfers != nil },
+            set: { v in self.updateSettings { $0.transfers = v ? ($0.transfers ?? 4) : nil } }
+        )
+    }
+
+    var transfersBinding: Binding<Int> {
+        Binding(
+            get: { self.settings.transfers ?? 4 },
+            set: { v in self.updateSettings { $0.transfers = min(32, max(1, v)) } }
+        )
     }
 
     func setLoginItem(_ enabled: Bool) {
@@ -139,8 +193,9 @@ final class AppModel: ObservableObject {
                     let r = Launchctl.kickstart(j.config.legacyLabel)
                     msgs.append(r.ok ? "已请求原 LaunchAgent 同步\(j.config.displayName)" : "\(j.config.displayName) 启动失败：\(r.stderr)")
                 }
+                let message = msgs.joined(separator: "；")
                 await MainActor.run { [weak self] in
-                    self?.show(msgs.joined(separator: "；"))
+                    self?.show(message)
                     self?.refreshSoon()
                 }
             }
@@ -297,7 +352,7 @@ final class AppModel: ObservableObject {
                 self.serviceBusy = false
                 self.serviceOutput = "\(title)\(r.ok ? "完成" : "未完成")\n\n" + text
                 if args.first == "inspect" { self.inspectionText = text }
-                self.settings = JSONStore.read(Settings.self, from: self.paths.settingsFile) ?? self.settings
+                self.settings = JSONStore.read(SyncSettings.self, from: self.paths.settingsFile) ?? self.settings
                 self.refreshSoon()
             }
         }

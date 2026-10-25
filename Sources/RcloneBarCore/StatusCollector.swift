@@ -56,7 +56,7 @@ public struct Snapshot: Equatable, Sendable {
     public var mode: ControlMode
     public var agentAlive: Bool
     public var agentVersion: String?
-    public var settings: Settings
+    public var settings: SyncSettings
     public var jobs: [JobSnapshot]
     public var overall: OverallState
     public var totalSpeed: Double
@@ -99,7 +99,7 @@ public final class StatusCollector: @unchecked Sendable {
         let fm = FileManager.default
         let managed = fm.fileExists(atPath: paths.installRecordFile.path) && fm.fileExists(atPath: paths.jobsFile.path)
         let jobs = self.jobs()
-        let settings = JSONStore.read(Settings.self, from: paths.settingsFile) ?? Settings()
+        let settings = JSONStore.read(SyncSettings.self, from: paths.settingsFile) ?? SyncSettings()
         let state = JSONStore.read(AgentState.self, from: paths.stateFile)
         let agentAlive = state.map { $0.isFresh(now: now) && ProcessScanner.isAlive($0.agentPID) } ?? false
         let procs = ProcessScanner.list { ProcessScanner.isRcloneName($0) }
@@ -122,7 +122,7 @@ public final class StatusCollector: @unchecked Sendable {
                         lastCommandResult: state?.commandResults.last)
     }
 
-    private func collectJob(_ job: JobConfig, managed: Bool, agentAlive: Bool, state: AgentState?, settings: Settings,
+    private func collectJob(_ job: JobConfig, managed: Bool, agentAlive: Bool, state: AgentState?, settings: SyncSettings,
                             procs: [ProcessEntry], runs: [RunRecord], now: Date) async -> JobSnapshot {
         let bisync = BisyncMatcher.bisyncProcesses(for: job, in: procs)
         let rt = (managed && agentAlive) ? state?.jobs[job.id] : nil

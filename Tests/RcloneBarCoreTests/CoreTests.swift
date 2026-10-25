@@ -257,7 +257,7 @@ final class MiscTests: XCTestCase {
     }
 
     func testBwlimitRate() {
-        var s = Settings()
+        var s = SyncSettings()
         XCTAssertNil(s.bwlimitRate)
         s.bandwidthControlEnabled = true
         XCTAssertEqual(s.bwlimitRate, "off")
@@ -272,7 +272,7 @@ final class MiscTests: XCTestCase {
     }
 
     func testSettingsDecodeWithMissingFields() throws {
-        let s = try JSONStore.makeDecoder().decode(Settings.self, from: Data(#"{"intervalMinutes": 10}"#.utf8))
+        let s = try JSONStore.makeDecoder().decode(SyncSettings.self, from: Data(#"{"intervalMinutes": 10}"#.utf8))
         XCTAssertEqual(s.intervalMinutes, 10)
         XCTAssertTrue(s.notifyFailures)
         XCTAssertNil(s.transfers)
