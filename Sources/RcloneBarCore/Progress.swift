@@ -31,6 +31,13 @@ public struct CurrentFile: Equatable, Sendable, Identifiable {
     public var percentage: Int?
     public var size: Int64?
     public var speed: Double?
+
+    public init(name: String, percentage: Int? = nil, size: Int64? = nil, speed: Double? = nil) {
+        self.name = name
+        self.percentage = percentage
+        self.size = size
+        self.speed = speed
+    }
 }
 
 public enum ProgressSource: String, Sendable {
