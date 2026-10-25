@@ -1,0 +1,56 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    # GitHub 的 macos-14 运行器为 Apple Silicon（M1）+ macOS 14
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 环境
+        run: |
+          sw_vers
+          uname -m
+          swift --version
+          xcodebuild -version
+
+      - name: 编译（debug）
+        run: swift build
+
+      - name: 单元测试
+        run: swift test
+
+      - name: 安装 rclone
+        run: |
+          brew install rclone
+          rclone version
+
+      - name: 端到端测试（真实 rclone bisync + 临时目录）
+        run: python3 Tests/e2e/e2e.py --agent .build/debug/rclonebar-agent
+
+      - name: launchd 接管 / 回退集成测试（隔离的测试标签）
+        run: python3 Tests/e2e/launchd_test.py .build/debug/rclonebar-agent
+
+      - name: 构建 .app（release, arm64）
+        run: scripts/build-app.sh
+
+      - name: 启动冒烟测试
+        run: |
+          export RCLONEBAR_HOME="$(mktemp -d)"
+          build/RcloneBar.app/Contents/MacOS/RcloneBar &
+          PID=$!
+          sleep 10
+          if kill -0 $PID; then echo "App 启动后保持运行"; kill $PID; else echo "App 已退出"; exit 1; fi
+          build/RcloneBar.app/Contents/MacOS/rclonebar-agent version
+          file build/RcloneBar.app/Contents/MacOS/RcloneBar
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RcloneBar-app
+          path: build/RcloneBar.zip
+          if-no-files-found: error
