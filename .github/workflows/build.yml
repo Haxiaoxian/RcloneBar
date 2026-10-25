@@ -54,16 +54,6 @@ jobs:
           export RCLONEBAR_HOME="$(mktemp -d)"
           perl -e 'alarm 90; exec @ARGV' build/RcloneBar.app/Contents/MacOS/RcloneBar --render-preview "$PWD/build/previews" || true
           ls -la build/previews || true
-          # 把缩小后的预览以 base64 打印到日志，便于在无法下载产物的环境中查看
-          mkdir -p build/previews-small
-          for f in build/previews/*.png; do
-            n=$(basename "$f" .png)
-            sips -Z 760 -s format jpeg -s formatOptions 70 "$f" --out "build/previews-small/$n.jpg" >/dev/null
-            echo "PREVIEW-BEGIN $n"
-            base64 -i "build/previews-small/$n.jpg" | fold -w 3000
-            echo "PREVIEW-END $n"
-          done
-
       - uses: actions/upload-artifact@v4
         with:
           name: RcloneBar-previews
@@ -75,3 +65,16 @@ jobs:
           name: RcloneBar-app
           path: build/RcloneBar.zip
           if-no-files-found: error
+
+      - name: 在日志中输出部分预览（base64，供无法下载产物的环境查看）
+        if: always()
+        run: |
+          mkdir -p build/previews-small
+          for n in panel-active-light panel-active-dark panel-error-light settings-1-light; do
+            f="build/previews/$n.png"
+            [ -f "$f" ] || continue
+            sips -Z 560 -s format jpeg -s formatOptions 55 "$f" --out "build/previews-small/$n.jpg" >/dev/null
+            echo "PREVIEW-BEGIN $n"
+            base64 -i "build/previews-small/$n.jpg" | fold -w 4000
+            echo "PREVIEW-END $n"
+          done
