@@ -49,6 +49,34 @@ public struct JobSnapshot: Equatable, Sendable, Identifiable {
     public var notice: String?
     public var settingsNote: String?
     public var consecutiveFailures: Int
+
+    public init(config: JobConfig, progress: JobProgress = JobProgress(), running: Bool = false, runStartedAt: Date? = nil,
+                trigger: RunTrigger? = nil, stopRequested: Bool = false, paused: Bool = false, rcState: RCState = .notRunning,
+                lastSuccessAt: Date? = nil, lastSuccessSource: String? = nil, lastOutcome: RunOutcome? = nil,
+                lastFinishedAt: Date? = nil, lastSummary: String? = nil, lastErrorCategory: ErrorCategory? = nil,
+                lastErrors: [String] = [], nextRunAt: Date? = nil, nextRunEstimated: Bool = false, notice: String? = nil,
+                settingsNote: String? = nil, consecutiveFailures: Int = 0) {
+        self.config = config
+        self.progress = progress
+        self.running = running
+        self.runStartedAt = runStartedAt
+        self.trigger = trigger
+        self.stopRequested = stopRequested
+        self.paused = paused
+        self.rcState = rcState
+        self.lastSuccessAt = lastSuccessAt
+        self.lastSuccessSource = lastSuccessSource
+        self.lastOutcome = lastOutcome
+        self.lastFinishedAt = lastFinishedAt
+        self.lastSummary = lastSummary
+        self.lastErrorCategory = lastErrorCategory
+        self.lastErrors = lastErrors
+        self.nextRunAt = nextRunAt
+        self.nextRunEstimated = nextRunEstimated
+        self.notice = notice
+        self.settingsNote = settingsNote
+        self.consecutiveFailures = consecutiveFailures
+    }
 }
 
 public struct Snapshot: Equatable, Sendable {
@@ -64,6 +92,21 @@ public struct Snapshot: Equatable, Sendable {
     public var lastCommandResult: CommandResult?
 
     public var anyActive: Bool { jobs.contains { $0.progress.activity.isActive } }
+
+    public init(updatedAt: Date, mode: ControlMode, agentAlive: Bool, agentVersion: String?, settings: SyncSettings,
+                jobs: [JobSnapshot], overall: OverallState, totalSpeed: Double, recentRuns: [RunRecord],
+                lastCommandResult: CommandResult?) {
+        self.updatedAt = updatedAt
+        self.mode = mode
+        self.agentAlive = agentAlive
+        self.agentVersion = agentVersion
+        self.settings = settings
+        self.jobs = jobs
+        self.overall = overall
+        self.totalSpeed = totalSpeed
+        self.recentRuns = recentRuns
+        self.lastCommandResult = lastCommandResult
+    }
 }
 
 /// 汇总各数据源生成界面快照。非线程安全：在单个后台任务里循环调用。

@@ -41,6 +41,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Info.plist 已设置 LSUIElement，这里再确保不显示 Dock 图标
         NSApp.setActivationPolicy(.accessory)
+        if PreviewRenderer.isRequested {
+            Task { @MainActor in
+                PreviewRenderer.renderAll()
+                NSApp.terminate(nil)
+            }
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

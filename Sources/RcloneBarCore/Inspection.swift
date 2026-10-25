@@ -9,6 +9,8 @@ public struct ScriptSummary: Codable, Sendable {
     public var mentionsPaths: [String: Bool]
     public var usesCustomEnv: Bool
     public var setsRC: Bool
+    /// 脚本里以字面量写出的 --workdir（如有）
+    public var workdir: String?
 }
 
 public struct JobInspection: Codable, Sendable {
@@ -120,6 +122,7 @@ public enum Inspector {
 
             var searchDirs: [URL] = []
             if let w = job.bisyncWorkdir { searchDirs.append(URL(fileURLWithPath: w)) }
+            if let w = script?.workdir, w.hasPrefix("/") || w.hasPrefix("~") { searchDirs.append(URL(fileURLWithPath: paths.expand(w))) }
             searchDirs += paths.defaultBisyncWorkdirs + [paths.legacyBase]
             let located = BisyncListings.locate(job: job, searchDirs: searchDirs)
             var probe: BisyncListings.Probe?
@@ -173,8 +176,14 @@ public enum Inspector {
         }
         let customEnv = code.range(of: #"env\s*=\s*(?!os\.environ|None|\{\s*\*\*os\.environ)"#, options: .regularExpression) != nil
         let setsRC = code.contains("--rc-addr") || code.contains("\"--rc\"") || code.contains("'--rc'")
+        var workdir: String?
+        if let re = try? NSRegularExpression(pattern: #"--workdir["']?\s*[,=]?\s*["']([^"'\n]+)["']"#),
+           let m = re.firstMatch(in: code, range: NSRange(code.startIndex..., in: code)),
+           let r = Range(m.range(at: 1), in: code) {
+            workdir = String(code[r])
+        }
         return ScriptSummary(path: url.path, size: data.count, modified: JSONStore.modificationDate(url), flags: flags,
-                             mentionsPaths: mentions, usesCustomEnv: customEnv, setsRC: setsRC)
+                             mentionsPaths: mentions, usesCustomEnv: customEnv, setsRC: setsRC, workdir: workdir)
     }
 
     /// 便于复制的中文文本报告（不含任何令牌或口令）。

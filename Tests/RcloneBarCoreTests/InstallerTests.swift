@@ -18,7 +18,7 @@ final class InstallerTests: XCTestCase {
         try fm.createDirectory(at: home.appendingPathComponent("Documents/项目"), withIntermediateDirectories: true)
         try Data("""
         import subprocess
-        cmd = ["/opt/homebrew/bin/rclone", "bisync", "/Users/zhuke/Documents/主仓库", "onedrive:其他/Obsidian/主仓库", "--resilient", "--recover", "--check-access", "--max-delete", "50"]
+        cmd = ["/opt/homebrew/bin/rclone", "bisync", "/Users/zhuke/Documents/主仓库", "onedrive:其他/Obsidian/主仓库", "--resilient", "--recover", "--check-access", "--max-delete", "50", "--workdir", "~/wd-test"]
         subprocess.run(cmd)
         """.utf8).write(to: paths.legacyScript)
         for id in ["vault", "projects"] {
@@ -100,6 +100,7 @@ final class InstallerTests: XCTestCase {
         XCTAssertEqual(report.jobs[0].startInterval, 300)
         XCTAssertEqual(report.script?.flags["--recover"], true)
         XCTAssertEqual(report.script?.flags["--resync"], false)
+        XCTAssertEqual(report.script?.workdir, "~/wd-test")
         let text = Inspector.text(report)
         XCTAssertTrue(text.contains("主仓库"))
     }

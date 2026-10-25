@@ -49,6 +49,18 @@ jobs:
           build/RcloneBar.app/Contents/MacOS/rclonebar-agent version
           file build/RcloneBar.app/Contents/MacOS/RcloneBar
 
+      - name: 界面预览截图（示例数据，浅色 / 深色）
+        run: |
+          export RCLONEBAR_HOME="$(mktemp -d)"
+          perl -e 'alarm 90; exec @ARGV' build/RcloneBar.app/Contents/MacOS/RcloneBar --render-preview "$PWD/build/previews" || true
+          ls -la build/previews || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RcloneBar-previews
+          path: build/previews
+          if-no-files-found: warn
+
       - uses: actions/upload-artifact@v4
         with:
           name: RcloneBar-app

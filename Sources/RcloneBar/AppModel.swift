@@ -37,7 +37,14 @@ final class AppModel: ObservableObject {
         collector = StatusCollector(paths: paths)
         settings = JSONStore.read(SyncSettings.self, from: AppPaths().settingsFile) ?? SyncSettings()
         loginItemEnabled = SMAppService.mainApp.status == .enabled
-        start()
+        if !PreviewRenderer.isRequested { start() }
+    }
+
+    /// 仅用于界面预览截图：使用示例数据，不读取真实状态
+    init(preview: Snapshot) {
+        collector = StatusCollector(paths: paths)
+        settings = preview.settings
+        snapshot = preview
     }
 
     var isManaged: Bool { snapshot?.mode == .managed }
